@@ -373,7 +373,7 @@ expec,dice = markovDecision(layout,circle)
 print(expec)
 print(dice)
 
-
+# simulate the game with the dice choices found above, a lot of time
 for j in range(14):
     c = 0
     n = 300000
