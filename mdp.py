@@ -4,7 +4,7 @@ def markovDecision(layout,circle):
     dice = np.zeros(14)
     expec = [17,15,13,14,12,10,8,6,4,2,8,6,4,2,0]
 
-    for _ in range(100): # need to find when algo has converged
+    for _ in range(50): # need to find when algo has converged
         #print(expec)
         for position in range(13,-1,-1):
             best_a,cost = find_best_action(position,layout,expec,circle)
@@ -90,10 +90,11 @@ def proba(i,position,action,layout,circle):
             elif layout[neighbor] == 4:
                 for j in range(15):
                     p[j] += pb/15
+            
 
 
-        if position == 1:
-            pb /= 2
+        #if position == 1:
+        #    pb /= 2
 
         # 2 jumps
 
@@ -112,6 +113,8 @@ def proba(i,position,action,layout,circle):
                     elif layout[neighbor] == 4:
                         for j in range(15):
                             p[j] += pb/15
+                    if position != 2:
+                        break
         else:
             for x in next_with_circle[position]:
                 for neighbor in next_with_circle[x]:
@@ -128,11 +131,13 @@ def proba(i,position,action,layout,circle):
                         p[neighbor] += pb
                     elif layout[neighbor] == 4:
                         for j in range(15):
-                            p[j] += pb/15            
+                            p[j] += pb/15       
+                    if position != 2:
+                        break     
 
 
-        if position == 0:
-            pb /= 2
+        #if position == 0:
+        #    pb /= 2
 
         # 3 jumps
 
@@ -152,6 +157,10 @@ def proba(i,position,action,layout,circle):
                         elif layout[neighbor] == 4:
                             for j in range(15):
                                 p[j] += pb/15
+                        if position != 2:
+                            break
+                    if position != 2:
+                        break
         else:
             for x in next_with_circle[position]:
                 for y in next_with_circle[x]:
@@ -169,7 +178,11 @@ def proba(i,position,action,layout,circle):
                             p[neighbor] += pb
                         elif layout[neighbor] == 4:
                             for j in range(15):
-                                p[j] += pb/15            
+                                p[j] += pb/15      
+                        if position != 2:
+                            break
+                    if position != 2:
+                        break   
 
 
     if action == "normal":
@@ -214,8 +227,8 @@ def proba(i,position,action,layout,circle):
                 p[neighbor] += pb/2
 
 
-        if position == 1:
-            pb /= 2
+        #if position == 1:
+        #    pb /= 2
 
         # 2 jumps
 
@@ -237,6 +250,8 @@ def proba(i,position,action,layout,circle):
                         for j in range(15):
                             p[j] += pb/15/2
                         p[neighbor] += pb/2
+                    if position != 2:
+                        break
         else:
             for x in next_with_circle[position]:
                 for neighbor in next_with_circle[x]:
@@ -257,6 +272,8 @@ def proba(i,position,action,layout,circle):
                         for j in range(15):
                             p[j] += pb/15/2
                         p[neighbor] += pb/2
+                    if position != 2:
+                        break
 
     return p[i]
 
@@ -302,21 +319,21 @@ def simulate(start,layout,circle,action):
         
 
         # move the pointer 
-        if (cur == 0 and to_move == 3) or (cur == 1 and to_move == 2) or (cur == 2 and to_move == 1):
+        if cur == 2 and to_move == 1:
             rdm = random.random()
             if rdm < 0.5:
                 cur = 3
             else:
                 cur = 10
 
-        elif (cur == 1 and to_move == 3) or (cur == 2 and to_move == 2):
+        elif cur == 2 and to_move == 2:
             rdm = random.random()
             if rdm < 0.5:
                 cur = 4
             else:
                 cur = 11
 
-        elif (cur == 2 and to_move == 3):
+        elif cur == 2 and to_move == 3:
             rdm = random.random()
             if rdm < 0.5:
                 cur = 5
@@ -367,12 +384,16 @@ def simulate(start,layout,circle,action):
     return cost
 
 
-layout = [0,1,0,2,0,3,0,4,0,3,0,2,0,1,0]
+#layout = [0, 4, 2, 1, 2, 1, 0, 2, 0, 3, 0, 1, 2, 2, 0]
+#layout = [0, 2, 0, 3, 1, 4, 2, 0, 1, 3, 2, 3, 0, 0, 0]
+layout = [0, 4, 2, 1, 2, 1, 0, 2, 0, 3, 0, 1, 2, 2, 0]
 circle = True
 expec,dice = markovDecision(layout,circle)
 print(expec)
 print(dice)
 
+
+"""
 # simulate the game with the dice choices found above, a lot of time
 for j in range(14):
     c = 0
@@ -380,4 +401,5 @@ for j in range(14):
     for i in range(n):
         c += simulate(j,layout,circle,dice)
     print(j,c/n)
+"""
     
