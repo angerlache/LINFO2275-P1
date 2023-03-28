@@ -1,17 +1,23 @@
 import numpy as np
+from copy import deepcopy
 
 def markovDecision(layout,circle):
     dice = np.zeros(14)
-    expec = [17,15,13,14,12,10,8,6,4,2,8,6,4,2,0]
+    expec = [17,15,13,14,12,10,8,6,4,2,8,6,4,2]
 
-    for _ in range(50): # need to find when algo has converged
-        #print(expec)
+    for iter in range(50000000): # need to find when algo has converged
+        old_expec = deepcopy(expec)
+        
         for position in range(13,-1,-1):
             best_a,cost = find_best_action(position,layout,expec,circle)
             dice[position] = best_a
             expec[position] = cost
+        diff = np.array(old_expec)-np.array(expec)
+        if (np.sqrt(sum(diff*diff))) < 1e-2:
+            print(iter)
+            break
 
-    return expec,dice
+    return [expec,dice]
 
 def find_best_action(position,layout,expec,circle):
     safe_cost = 1
@@ -19,29 +25,64 @@ def find_best_action(position,layout,expec,circle):
     risky_cost = 1
 
     for i in range(14):
-        tmp = 0
+        normal = 0
+        risky = 0
         if layout[i] == 3:
-            tmp = 1
+            risky = 1
+            if random.random() > 0.5:
+                normal = 1
             
         safe_cost += proba(i,position,"safe",layout,circle)*expec[i]
-        normal_cost += proba(i,position,"normal",layout,circle)*(expec[i]+tmp/2)
-        risky_cost += proba(i,position,"risky",layout,circle)*(expec[i]+tmp) 
+        normal_cost += proba(i,position,"normal",layout,circle)*(expec[i]+normal)
+        risky_cost += proba(i,position,"risky",layout,circle)*(expec[i]+risky) 
 
     
     if (safe_cost <= normal_cost and safe_cost <= risky_cost) : return 1,safe_cost
     if (normal_cost <= safe_cost and normal_cost <= risky_cost) : return 2,normal_cost
     if (risky_cost <= safe_cost and risky_cost <= normal_cost) : return 3,risky_cost
 
+
+next = {0:[1], 1:[2], 2:[3,10], 3:[4], 4:[5], 5:[6], 6:[7], 7:[8], 8:[9], 
+9:[14], 10:[11], 11:[12], 12:[13], 13:[14],14:[]}
+
+next_with_circle = {0:[1], 1:[2], 2:[3,10], 3:[4], 4:[5], 5:[6], 6:[7], 7:[8], 8:[9], 
+9:[14], 10:[11], 11:[12], 12:[13], 13:[14],14:[-1],-1:[0]}
+
+minus_3 = {13:[10], 12:[2], 11:[1], 10:[0], 9:[6], 8:[5], 7:[4], 6:[3], 
+5:[2], 4:[1], 3:[0], 2:[0], 1:[0]}
+
+def update_proba_table_risky(layout,p,pb,neighbor):
+
+    if layout[neighbor] == 0:
+        p[neighbor] += pb
+    elif layout[neighbor] == 1:
+        p[0] += pb
+    elif layout[neighbor] == 2:
+        p[minus_3[neighbor]] += pb
+    elif layout[neighbor] == 3:
+        p[neighbor] += pb
+    elif layout[neighbor] == 4:
+        for j in range(15):
+            p[j] += pb/15
+
+def update_proba_table_normal(layout,p,pb,neighbor):
+    if layout[neighbor] == 0:
+        p[neighbor] += pb
+    elif layout[neighbor] == 1:
+        p[0] += pb/2
+        p[neighbor] += pb/2
+    elif layout[neighbor] == 2:
+        p[minus_3[neighbor]] += pb/2
+        p[neighbor] += pb/2
+    elif layout[neighbor] == 3:
+        p[neighbor] += pb
+    elif layout[neighbor] == 4:
+        for j in range(15):
+            p[j] += pb/15/2
+        p[neighbor] += pb/2
+
+
 def proba(i,position,action,layout,circle):
-
-    next = {0:[1], 1:[2], 2:[3,10], 3:[4], 4:[5], 5:[6], 6:[7], 7:[8], 8:[9], 
-    9:[14], 10:[11], 11:[12], 12:[13], 13:[14],14:[]}
-
-    next_with_circle = {0:[1], 1:[2], 2:[3,10], 3:[4], 4:[5], 5:[6], 6:[7], 7:[8], 8:[9], 
-    9:[14], 10:[11], 11:[12], 12:[13], 13:[14],14:[-1],-1:[0]}
-
-    minus_3 = {13:[10], 12:[2], 11:[1], 10:[0], 9:[6], 8:[5], 7:[4], 6:[3], 
-    5:[2], 4:[1], 3:[0], 2:[0], 1:[0]}
 
     p = np.zeros(15)
 
@@ -58,86 +99,40 @@ def proba(i,position,action,layout,circle):
 
     if action == "risky":
 
-        # 0 jump
-        if layout[position] == 0 :
-            p[position] += 0.25
-        elif layout[position] == 1:
-            p[0] += 0.25
-        elif layout[position] == 2:
-            p[minus_3[position]] += 0.25
-        elif layout[position] == 3:
-            p[position] += 0.25
-        elif layout[position] == 4:
-            for j in range(15):
-                p[j] += 0.25/15
-
-
         pb = 0.25
+
+        # 0 jump
+        update_proba_table_risky(layout,p,pb,position)
+
         if position == 2:
             pb /= 2
 
         # 1 jump
         for neighbor in next[position]:
+            update_proba_table_risky(layout,p,pb,neighbor)
 
-            if layout[neighbor] == 0:
-                p[neighbor] += pb
-            elif layout[neighbor] == 1:
-                p[0] += pb
-            elif layout[neighbor] == 2:
-                p[minus_3[neighbor]] += pb
-            elif layout[neighbor] == 3:
-                p[neighbor] += pb
-            elif layout[neighbor] == 4:
-                for j in range(15):
-                    p[j] += pb/15
-            
-
-
-        #if position == 1:
-        #    pb /= 2
 
         # 2 jumps
 
         if circle == False:
             for x in next[position]:
                 for neighbor in next[x]:
+                    update_proba_table_risky(layout,p,pb,neighbor)
 
-                    if layout[neighbor] == 0:
-                        p[neighbor] += pb
-                    elif layout[neighbor] == 1:
-                        p[0] += pb
-                    elif layout[neighbor] == 2:
-                        p[minus_3[neighbor]] += pb
-                    elif layout[neighbor] == 3:
-                        p[neighbor] += pb
-                    elif layout[neighbor] == 4:
-                        for j in range(15):
-                            p[j] += pb/15
                     if position != 2:
                         break
         else:
             for x in next_with_circle[position]:
                 for neighbor in next_with_circle[x]:
+
                     if neighbor == -1:
                         neighbor = 0
                     
-                    if layout[neighbor] == 0:
-                        p[neighbor] += pb
-                    elif layout[neighbor] == 1:
-                        p[0] += pb
-                    elif layout[neighbor] == 2:
-                        p[minus_3[neighbor]] += pb
-                    elif layout[neighbor] == 3:
-                        p[neighbor] += pb
-                    elif layout[neighbor] == 4:
-                        for j in range(15):
-                            p[j] += pb/15       
+                    update_proba_table_risky(layout,p,pb,neighbor)
+ 
                     if position != 2:
                         break     
 
-
-        #if position == 0:
-        #    pb /= 2
 
         # 3 jumps
 
@@ -145,18 +140,8 @@ def proba(i,position,action,layout,circle):
             for x in next[position]:
                 for y in next[x]:
                     for neighbor in next[y]:
+                        update_proba_table_risky(layout,p,pb,neighbor)
 
-                        if layout[neighbor] == 0:
-                            p[neighbor] += pb
-                        elif layout[neighbor] == 1:
-                            p[0] += pb
-                        elif layout[neighbor] == 2:
-                            p[minus_3[neighbor]] += pb
-                        elif layout[neighbor] == 3:
-                            p[neighbor] += pb
-                        elif layout[neighbor] == 4:
-                            for j in range(15):
-                                p[j] += pb/15
                         if position != 2:
                             break
                     if position != 2:
@@ -168,17 +153,8 @@ def proba(i,position,action,layout,circle):
                         if y == -1 or neighbor == -1:
                             neighbor = 0
 
-                        if layout[neighbor] == 0:
-                            p[neighbor] += pb
-                        elif layout[neighbor] == 1:
-                            p[0] += pb
-                        elif layout[neighbor] == 2:
-                            p[minus_3[neighbor]] += pb
-                        elif layout[neighbor] == 3:
-                            p[neighbor] += pb
-                        elif layout[neighbor] == 4:
-                            for j in range(15):
-                                p[j] += pb/15      
+                        update_proba_table_risky(layout,p,pb,neighbor)
+
                         if position != 2:
                             break
                     if position != 2:
@@ -186,24 +162,10 @@ def proba(i,position,action,layout,circle):
 
 
     if action == "normal":
+        pb = 1/3
 
         # 0 jump
-        if layout[position] == 0 :
-            p[position] += 1/3
-        elif layout[position] == 1:
-            p[0] += 1/3/2
-            p[position] += 1/3/2
-        elif layout[position] == 2:
-            p[minus_3[position]] += 1/3/2
-            p[position] += 1/3/2
-        elif layout[position] == 3:
-            p[position] += 1/3
-        elif layout[position] == 4:
-            for j in range(15):
-                p[j] += 1/3/15/2
-            p[position] += 1/3/2
-
-        pb = 1/3
+        update_proba_table_normal(layout,p,pb,position)
 
         if position == 2:
             pb /= 2
@@ -211,45 +173,16 @@ def proba(i,position,action,layout,circle):
         # 1 jump
         for neighbor in next[position]:
 
-            if layout[neighbor] == 0:
-                p[neighbor] += pb
-            elif layout[neighbor] == 1:
-                p[0] += pb/2
-                p[neighbor] += pb/2
-            elif layout[neighbor] == 2:
-                p[minus_3[neighbor]] += pb/2
-                p[neighbor] += pb/2
-            elif layout[neighbor] == 3:
-                p[neighbor] += pb
-            elif layout[neighbor] == 4:
-                for j in range(15):
-                    p[j] += pb/15/2
-                p[neighbor] += pb/2
-
-
-        #if position == 1:
-        #    pb /= 2
+            update_proba_table_normal(layout,p,pb,neighbor)
 
         # 2 jumps
 
         if circle == False:
             for x in next[position]:
                 for neighbor in next[x]:
+                    update_proba_table_normal(layout,p,pb,neighbor)
 
-                    if layout[neighbor] == 0:
-                        p[neighbor] += pb
-                    elif layout[neighbor] == 1:
-                        p[0] += pb/2
-                        p[neighbor] += pb/2
-                    elif layout[neighbor] == 2:
-                        p[minus_3[neighbor]] += pb/2
-                        p[neighbor] += pb/2
-                    elif layout[neighbor] == 3:
-                        p[neighbor] += pb
-                    elif layout[neighbor] == 4:
-                        for j in range(15):
-                            p[j] += pb/15/2
-                        p[neighbor] += pb/2
+                    
                     if position != 2:
                         break
         else:
@@ -257,21 +190,8 @@ def proba(i,position,action,layout,circle):
                 for neighbor in next_with_circle[x]:
                     if neighbor == -1:
                         neighbor = 0
-
-                    if layout[neighbor] == 0:
-                        p[neighbor] += pb
-                    elif layout[neighbor] == 1:
-                        p[0] += pb/2
-                        p[neighbor] += pb/2
-                    elif layout[neighbor] == 2:
-                        p[minus_3[neighbor]] += pb/2
-                        p[neighbor] += pb/2
-                    elif layout[neighbor] == 3:
-                        p[neighbor] += pb
-                    elif layout[neighbor] == 4:
-                        for j in range(15):
-                            p[j] += pb/15/2
-                        p[neighbor] += pb/2
+                    update_proba_table_normal(layout,p,pb,neighbor)
+    
                     if position != 2:
                         break
 
@@ -384,9 +304,7 @@ def simulate(start,layout,circle,action):
     return cost
 
 
-#layout = [0, 4, 2, 1, 2, 1, 0, 2, 0, 3, 0, 1, 2, 2, 0]
-#layout = [0, 2, 0, 3, 1, 4, 2, 0, 1, 3, 2, 3, 0, 0, 0]
-layout = [0, 4, 2, 1, 2, 1, 0, 2, 0, 3, 0, 1, 2, 2, 0]
+layout = [0, 2, 0, 3, 1, 4, 2, 0, 1, 3, 2, 3, 0, 0, 0]
 circle = True
 expec,dice = markovDecision(layout,circle)
 print(expec)
