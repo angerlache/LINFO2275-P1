@@ -1,27 +1,30 @@
 import numpy as np
 from copy import deepcopy
+import random
+
 
 def markovDecision(layout,circle):
-    dice = np.zeros(14)
-    expec = [17,15,13,14,12,10,8,6,4,2,8,6,4,2]
+    Dice = np.zeros(14)
+    Expec = [17,15,13,14,12,10,8,6,4,2,8,6,4,2]
 
     iter = 0
-    while True: # need to find when algo has converged
+    while True: 
         iter += 1
-        old_expec = deepcopy(expec)
+        old_expec = deepcopy(Expec)
         
-       # for position in range(13,-1,-1):
         for position in range(14):
-            best_a,cost = find_best_action(position,layout,expec,circle)
-            dice[position] = best_a
-            expec[position] = cost
-        diff = np.array(old_expec)-np.array(expec)
+            best_a,cost = find_best_action(position,layout,Expec,circle)
+            Dice[position] = best_a
+            Expec[position] = cost
+        diff = np.array(old_expec) - np.array(Expec)
         if sum(diff)/14 < 1e-15:
             print(iter)
             break
 
-    return [expec,dice]
+    return [Expec,Dice]
 
+
+# Find the best action to perform knowing that we are on tile "position"
 def find_best_action(position,layout,expec,circle):
     safe_cost = 1
     normal_cost = 1
@@ -32,7 +35,6 @@ def find_best_action(position,layout,expec,circle):
     transition_proba_risky = proba(position,"risky",layout,circle)
     
     for i in range(14):
-        
         normal = 0
         risky = 0
         if layout[i] == 3:
@@ -91,6 +93,8 @@ def update_proba_table_normal(layout,p,pb,neighbor):
 
 def proba(position,action,layout,circle):
 
+    """ Calculates the probabilities of jumping to all tiles knowing that we are on tile 'position' """
+
     p = np.zeros(15)
 
     if action == "safe":
@@ -112,6 +116,7 @@ def proba(position,action,layout,circle):
         update_proba_table_risky(layout,p,pb,position)
 
         if position == 2:
+            # Because of the 2 different pathes we can take starting on tile 2
             pb /= 2
 
         # 1 jump
@@ -120,29 +125,30 @@ def proba(position,action,layout,circle):
 
 
         # 2 jumps
-
         if circle == False:
             for x in next[position]:
                 for neighbor in next[x]:
                     update_proba_table_risky(layout,p,pb,neighbor)
 
                     if position != 2:
+                        # To not go on tile 10 if we are passing through tile 2
                         break
         else:
             for x in next_with_circle[position]:
                 for neighbor in next_with_circle[x]:
 
                     if neighbor == -1:
+                        # To link the last tile with the start
                         neighbor = 0
                     
                     update_proba_table_risky(layout,p,pb,neighbor)
  
                     if position != 2:
+                        # To not go on tile 10 if we are passing through tile 2
                         break     
 
 
         # 3 jumps
-
         if circle == False:
             for x in next[position]:
                 for y in next[x]:
@@ -150,21 +156,26 @@ def proba(position,action,layout,circle):
                         update_proba_table_risky(layout,p,pb,neighbor)
 
                         if position != 2:
+                            # To not go on tile 10/11 if we are passing through tile 2
                             break
                     if position != 2:
+                        # To not go on tile 10/11 if we are passing through tile 2
                         break
         else:
             for x in next_with_circle[position]:
                 for y in next_with_circle[x]:
                     for neighbor in next_with_circle[y]:
                         if y == -1 or neighbor == -1:
+                            # To link the last tile with the start
                             neighbor = 0
 
                         update_proba_table_risky(layout,p,pb,neighbor)
 
                         if position != 2:
+                            # To not go on tile 10/11 if we are passing through tile 2
                             break
                     if position != 2:
+                        # To not go on tile 10/11 if we are passing through tile 2
                         break   
 
 
@@ -175,11 +186,11 @@ def proba(position,action,layout,circle):
         update_proba_table_normal(layout,p,pb,position)
 
         if position == 2:
+            # Because of the 2 different pathes we can take starting on tile 2
             pb /= 2
 
         # 1 jump
         for neighbor in next[position]:
-
             update_proba_table_normal(layout,p,pb,neighbor)
 
         # 2 jumps
@@ -189,26 +200,28 @@ def proba(position,action,layout,circle):
                 for neighbor in next[x]:
                     update_proba_table_normal(layout,p,pb,neighbor)
 
-                    
                     if position != 2:
+                        # To not go on tile 10 if we are passing through tile 2
                         break
         else:
             for x in next_with_circle[position]:
                 for neighbor in next_with_circle[x]:
                     if neighbor == -1:
+                        # To link the last tile with the start
                         neighbor = 0
                     update_proba_table_normal(layout,p,pb,neighbor)
     
                     if position != 2:
+                        # To not go on tile 10 if we are passing through tile 2
                         break
 
     return p
 
 
-import random
-
 
 def simulate(start,layout,circle,action):
+
+    """ Simulate a game by following the strategy in the parameter 'action' starting at postion 'start' """
     
     cur = start
     cost = 0
