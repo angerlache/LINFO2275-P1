@@ -5,16 +5,19 @@ def markovDecision(layout,circle):
     dice = np.zeros(14)
     expec = [17,15,13,14,12,10,8,6,4,2,8,6,4,2]
 
-    for iter in range(5000): # need to find when algo has converged
+    iter = 0
+    while True: # need to find when algo has converged
+        iter += 1
         old_expec = deepcopy(expec)
         
-        for position in range(13,-1,-1):
+       # for position in range(13,-1,-1):
+        for position in range(14):
             best_a,cost = find_best_action(position,layout,expec,circle)
             dice[position] = best_a
             expec[position] = cost
         diff = np.array(old_expec)-np.array(expec)
-        if (np.sqrt(sum(diff*diff))) < 1e-2:
-            
+        if sum(diff)/14 < 1e-15:
+            print(iter)
             break
 
     return [expec,dice]
@@ -23,18 +26,22 @@ def find_best_action(position,layout,expec,circle):
     safe_cost = 1
     normal_cost = 1
     risky_cost = 1
-
+    
+    transition_proba_safe = proba(position,"safe",layout,circle)
+    transition_proba_normal = proba(position,"normal",layout,circle)
+    transition_proba_risky = proba(position,"risky",layout,circle)
+    
     for i in range(14):
+        
         normal = 0
         risky = 0
         if layout[i] == 3:
             risky = 1
-            if random.random() > 0.5:
-                normal = 1
+            normal = 0.5
             
-        safe_cost += proba(i,position,"safe",layout,circle)*expec[i]
-        normal_cost += proba(i,position,"normal",layout,circle)*(expec[i]+normal)
-        risky_cost += proba(i,position,"risky",layout,circle)*(expec[i]+risky) 
+        safe_cost += transition_proba_safe[i]*expec[i]
+        normal_cost += transition_proba_normal[i]*(expec[i]+normal)
+        risky_cost += transition_proba_risky[i]*(expec[i]+risky) 
 
     
     if (safe_cost <= normal_cost and safe_cost <= risky_cost) : return 1,safe_cost
@@ -82,7 +89,7 @@ def update_proba_table_normal(layout,p,pb,neighbor):
         p[neighbor] += pb/2
 
 
-def proba(i,position,action,layout,circle):
+def proba(position,action,layout,circle):
 
     p = np.zeros(15)
 
@@ -195,7 +202,7 @@ def proba(i,position,action,layout,circle):
                     if position != 2:
                         break
 
-    return p[i]
+    return p
 
 
 import random
@@ -304,9 +311,11 @@ def simulate(start,layout,circle,action):
     return cost
 
 
-layout = [0, 4, 2, 1, 3, 3, 2, 1, 4, 1, 2, 3, 2, 1, 0]
-circle = False
+layout = [0, 0, 0, 3, 0, 0, 0, 0, 4, 3, 0, 3, 0, 0, 0]
+circle = True
 expec,dice = markovDecision(layout,circle)
+print(expec)
+print(dice)
 
 
 # simulate the game with the dice choices found above, a lot of time
@@ -314,28 +323,28 @@ res = []
 #empirical_dice = [3 for ele in range(14)]
 #empirical_dice = [random.randint(1,3) for i in range(14)]
 
-
 for j in range(14):
     c = 0
     n = 300000
     for i in range(n):
         c += simulate(j,layout,circle,dice)
+        #c += simulate(j,layout,circle,empirical_dice)
     res.append(c/n)
 #print(res)
 
-print("theoretical cost = " + str([float("{0:0.3f}".format(i)) for i in expec]))
-print("empirical cost best dice = " + str([float("{0:0.3f}".format(i)) for i in res]))
 
 
-"""
 print("layout = " + str(layout))
 print("circle = " + str(circle))
 print("theoretical dice = " + str(dice))
 print("theoretical cost = " + str([float("{0:0.3f}".format(i)) for i in expec]))
-print("empirical dice = " + str(empirical_dice))
+#print("empirical dice = " + str(empirical_dice))
 print("empirical cost = " + str([float("{0:0.3f}".format(i)) for i in res]))
 print("------------------------------------------------------------------------------------------------------------------------")
 
 """
 
+print("theoretical cost = " + str([float("{0:0.3f}".format(i)) for i in expec]))
+print("empirical cost best dice = " + str([float("{0:0.3f}".format(i)) for i in res]))
+"""
 
